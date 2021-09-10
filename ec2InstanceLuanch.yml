@@ -1,0 +1,49 @@
+- hosts: 127.0.0.1
+  vars_files: 
+  - secret.yml
+  tasks:
+  - name: "Creating Master Node"
+    ec2_instance:
+            region: ap-south-1
+            image_id: ami-00bf4ae5a7909786c
+            instance_type: t2.micro
+            vpc_subnet_id: subnet-82fce8ea
+            name: "Master"
+            tags:
+              Node: "Master"
+            security_group: sg-0a17963a5dc67a16e
+            key_name: fb_key
+            state: present
+            aws_access_key: "{{uname}}"
+            aws_secret_key: "{{pass}}"
+
+  - name: "Creating 1st Slave Node"
+    ec2_instance:
+            region: ap-south-1
+            image_id: ami-00bf4ae5a7909786c
+            instance_type: t2.micro
+            vpc_subnet_id: subnet-82fce8ea
+            name: "Slave1"
+            tags:
+              Node: "Slave"
+            security_group: sg-0a17963a5dc67a16e
+            key_name: fb_key
+            state: present
+            aws_access_key: "{{uname}}"
+            aws_secret_key: "{{pass}}"
+
+#  - name: "Creating 2nd Slave Node"
+#    ec2_instance:
+#            region: ap-south-1
+#            image_id: ami-00bf4ae5a7909786c
+#            instance_type: t2.micro
+#            vpc_subnet_id: subnet-82fce8ea
+#            name: "Slave2"
+#            tags:
+#              Node: "Slave"
+#            security_group: sg-080d9985aebdecbf9
+#            key_name: fb_key
+#            state: present
+#            aws_access_key: "{{uname}}"
+#            aws_secret_key: "{{pass}}"
+  

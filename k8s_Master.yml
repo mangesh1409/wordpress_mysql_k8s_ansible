@@ -1,0 +1,70 @@
+- name: "K8s Matser Configuration"
+  hosts: tag_Node_Master
+  vars:
+     - pod_cidr_network: "10.244.0.0/16"
+  tasks:
+        - name: "Installing Required Packages"
+          package:
+               name:
+                - "docker"
+                - "iproute-tc"
+               state: present
+
+        - name: "Creating Yum Repo For Kubeadm, Kubelet, and Kubectl"
+          yum_repository:
+               name: kubernetes
+               description: "Kubernetes"
+               baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+               gpgcheck: yes
+               gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+               exclude: kubelet kubeadm kubectl
+
+        - name: "Installing Kubeadm, Kubelet, and Kubectl"
+          yum:
+              name: [ 'kubectl', 'kubeadm', 'kubelet' ]
+              state: present
+              disable_excludes: kubernetes
+
+        - name: "Starting Kubelet Service"
+          service:
+               name: "kubelet"
+               state: started
+               enabled: yes
+
+        - name: "Copy Daemon file to change the Docker's cgroup Driver"
+          copy:
+             src: "daemon.json"
+             dest: "/etc/docker/daemon.json"
+
+        - name: "Starting Docker Service"
+          service:
+               name: "docker"
+               state: started
+               enabled: yes
+
+        - name: "Pull required imges"
+          command: "kubeadm config images pull"
+
+        - name: "Initializing the Kubernetes cluser on Master Node"
+          command: "kubeadm init --pod-network-cidr={{ pod_cidr_network }} --ignore-preflight-errors=NumCPU --ignore-preflight-errors=Mem"
+          ignore_errors: True
+
+        - name: "Configuration Files Setup"
+          shell: |
+                  mkdir -p $HOME/.kube
+                  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+                  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+          ignore_errors: True
+
+        - name: "Downloading CNI Plugin"
+          command: "kubectl apply  -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+          ignore_errors: True
+
+        - name: "Creating Join Token"
+          command: "kubeadm token create --print-join-command"
+          register: x
+          ignore_errors: True
+
+        - name: "Storing Token locally"
+          local_action: copy content={{ x.stdout }} dest=/tmp/token
+
